@@ -9,12 +9,89 @@ const DENZEL_IMDB_ID = 'nm0000243';
 const CONNECTION_URL = "mongodb+srv://Robin1:Robin1@cluster0-ehu8h.mongodb.net/test?retryWrites=true";
 const DATABASE_NAME = "Denzel";
 
+const graphqlHTTP = require('express-graphql');
+const {GraphQLSchema} = require('graphql');
+const { GraphQLObjectType,
+    GraphQLString,
+    GraphQLInt,
+	GraphQLList
+} = require('graphql');
+const _ = require('lodash');
+const movie=require('./type.js').movie;
+
 var app = Express();
 
 app.use(BodyParser.json());
 app.use(BodyParser.urlencoded({ extended: true }));
 
 var database, collection;
+
+
+const queryType = new GraphQLObjectType({
+    name: 'Query',
+    fields: {
+        hello: {
+            type: GraphQLString,
+
+            resolve: function () {
+                return "Hello World";
+            }
+        },
+        populate:{
+          type: GraphQLString,
+          resolve: async () => {
+            const movies = await imdb(DENZEL_IMDB_ID);
+            collection.insertMany(movies, (error, result) => {
+                if(error) {
+                    return response.status(500).send(error);
+                }
+
+            });
+            return "done!";
+		}},
+		  randommovie :{
+			  type: movie,
+			  resolve: async () => {
+				  collection.find({"metascore": {$gte: 70}}).toArray((error, result) => {
+						if(error) {
+							return response.status(500).send(error);
+						}
+						const res=response.send(result[Math.floor(Math.random() * result.length)]);
+						return res;
+					});
+							
+			
+			
+									}
+		  }
+}
+		
+});
+	
+
+	const schema = new GraphQLSchema({ query: queryType });
+	
+	
+app.use('/graphql', graphqlHTTP({
+    schema: schema,
+    graphiql: true,
+}));
+
+
+
+
+
+
+	
+	app.use('/graphql', graphqlHTTP({
+    schema: schema,
+    graphiql: true,
+}));
+
+
+
+
+
 
 app.listen(process.env.PORT || 9292, () => {
     MongoClient.connect(CONNECTION_URL, { useNewUrlParser: true }, (error, client) => {
